@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "ElevatorMeet",
+  "version": "1.0.0",
+  "description": "Plays elevator music whenever a Google Meet call goes quiet for too long.",
+  "permissions": ["tabCapture", "offscreen", "storage", "activeTab"],
+  "host_permissions": ["https://meet.google.com/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ElevatorMeet"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}

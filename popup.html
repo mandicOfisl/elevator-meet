@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>ElevatorMeet</title>
+    <style>
+      body {
+        width: 260px;
+        font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+        margin: 0;
+        padding: 16px;
+        color: #1f2430;
+      }
+      h1 {
+        font-size: 15px;
+        margin: 0 0 4px;
+      }
+      .subtitle {
+        font-size: 11px;
+        color: #6b7280;
+        margin: 0 0 14px;
+      }
+      .row {
+        margin-bottom: 14px;
+      }
+      label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        margin-bottom: 4px;
+      }
+      label span.val {
+        font-weight: 600;
+        color: #4338ca;
+      }
+      input[type="range"] {
+        width: 100%;
+      }
+      button {
+        width: 100%;
+        padding: 9px 0;
+        border: none;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      #toggleBtn {
+        background: #4338ca;
+        color: white;
+      }
+      #toggleBtn.running {
+        background: #dc2626;
+      }
+      #status {
+        margin-top: 10px;
+        font-size: 11px;
+        text-align: center;
+        color: #6b7280;
+        min-height: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🛗 ElevatorMeet</h1>
+    <p class="subtitle">Fills the awkward silence, then gets out of the way.</p>
+
+    <div class="row">
+      <label>Silence before music <span class="val" id="silenceVal">5s</span></label>
+      <input type="range" id="silenceRange" min="2" max="15" step="1" value="5" />
+    </div>
+
+    <div class="row">
+      <label>Sensitivity (lower = more sensitive) <span class="val" id="volVal">6</span></label>
+      <input type="range" id="volRange" min="1" max="30" step="1" value="6" />
+    </div>
+
+    <div class="row">
+      <label>Music volume <span class="val" id="musicVolVal">50%</span></label>
+      <input type="range" id="musicVolRange" min="0" max="100" step="5" value="50" />
+    </div>
+
+    <button id="toggleBtn">Start</button>
+    <div id="status"></div>
+
+    <script src="popup.js"></script>
+  </body>
+</html>
