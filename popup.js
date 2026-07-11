@@ -1,11 +1,11 @@
-const silenceRange = document.getElementById("silenceRange");
-const volRange = document.getElementById("volRange");
-const musicVolRange = document.getElementById("musicVolRange");
-const silenceVal = document.getElementById("silenceVal");
-const volVal = document.getElementById("volVal");
-const musicVolVal = document.getElementById("musicVolVal");
-const toggleBtn = document.getElementById("toggleBtn");
-const statusEl = document.getElementById("status");
+const silenceRange = document.getElementById('silenceRange');
+const volRange = document.getElementById('volRange');
+const musicVolRange = document.getElementById('musicVolRange');
+const silenceVal = document.getElementById('silenceVal');
+const volVal = document.getElementById('volVal');
+const musicVolVal = document.getElementById('musicVolVal');
+const toggleBtn = document.getElementById('toggleBtn');
+const statusEl = document.getElementById('status');
 
 function currentSettings() {
   return {
@@ -23,53 +23,54 @@ function refreshLabels() {
 
 async function init() {
   const stored = await chrome.storage.local.get([
-    "silenceThreshold",
-    "volumeThreshold",
-    "musicVolume",
-    "running",
+    'silenceThreshold',
+    'volumeThreshold',
+    'musicVolume',
+    'running',
   ]);
 
   if (stored.silenceThreshold) silenceRange.value = stored.silenceThreshold;
   if (stored.volumeThreshold) volRange.value = stored.volumeThreshold;
-  if (stored.musicVolume != null) musicVolRange.value = stored.musicVolume * 100;
+  if (stored.musicVolume != null)
+    musicVolRange.value = stored.musicVolume * 100;
 
   refreshLabels();
   setRunningUI(!!stored.running);
 }
 
 function setRunningUI(running) {
-  toggleBtn.textContent = running ? "Stop" : "Start";
-  toggleBtn.classList.toggle("running", running);
+  toggleBtn.textContent = running ? 'Stop' : 'Start';
+  toggleBtn.classList.toggle('running', running);
 }
 
 [silenceRange, volRange, musicVolRange].forEach((el) => {
-  el.addEventListener("input", async () => {
+  el.addEventListener('input', async () => {
     refreshLabels();
     const settings = currentSettings();
     await chrome.storage.local.set(settings);
-    chrome.runtime.sendMessage({ type: "UPDATE_SETTINGS", settings });
+    chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
   });
 });
 
-toggleBtn.addEventListener("click", async () => {
-  const { running } = await chrome.storage.local.get("running");
+toggleBtn.addEventListener('click', async () => {
+  const { running } = await chrome.storage.local.get('running');
 
   if (!running) {
-    statusEl.textContent = "Starting…";
+    statusEl.textContent = 'Starting…';
     const response = await chrome.runtime.sendMessage({
-      type: "START",
+      type: 'START',
       settings: currentSettings(),
     });
     if (response && response.ok) {
       setRunningUI(true);
-      statusEl.textContent = "Listening for silence.";
+      statusEl.textContent = 'Listening for silence.';
     } else {
-      statusEl.textContent = response?.error || "Could not start.";
+      statusEl.textContent = response?.error || 'Could not start.';
     }
   } else {
-    await chrome.runtime.sendMessage({ type: "STOP" });
+    await chrome.runtime.sendMessage({ type: 'STOP' });
     setRunningUI(false);
-    statusEl.textContent = "Stopped.";
+    statusEl.textContent = 'Stopped.';
   }
 });
 

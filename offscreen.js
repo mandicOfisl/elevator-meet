@@ -2,7 +2,7 @@
 // Runs in a hidden offscreen document because MV3 service workers cannot
 // create AudioContext / MediaStream / <audio> elements themselves.
 
-const musicEl = document.getElementById("music");
+const musicEl = document.getElementById('music');
 
 let audioContext = null;
 let sourceNode = null;
@@ -25,11 +25,11 @@ let settings = {
 };
 
 chrome.runtime.onMessage.addListener((message) => {
-  if (message.target !== "offscreen") return;
+  if (message.target !== 'offscreen') return;
 
-  if (message.type === "STOP_CAPTURE") {
+  if (message.type === 'STOP_CAPTURE') {
     stopCapture();
-  } else if (message.type === "UPDATE_SETTINGS") {
+  } else if (message.type === 'UPDATE_SETTINGS') {
     settings = { ...settings, ...(message.settings || {}) };
   }
 });
@@ -39,15 +39,17 @@ chrome.runtime.onMessage.addListener((message) => {
 // avoids the race where a message arrives before this script has loaded.
 (function initFromUrl() {
   const params = new URLSearchParams(location.search);
-  const streamId = params.get("streamId");
+  const streamId = params.get('streamId');
   if (!streamId) return; // opened with no params, e.g. dev preview — no-op
 
   settings = {
     ...settings,
-    silenceThreshold: Number(params.get("silenceThreshold")) || settings.silenceThreshold,
-    volumeThreshold: Number(params.get("volumeThreshold")) || settings.volumeThreshold,
-    musicVolume: params.has("musicVolume")
-      ? Number(params.get("musicVolume"))
+    silenceThreshold:
+      Number(params.get('silenceThreshold')) || settings.silenceThreshold,
+    volumeThreshold:
+      Number(params.get('volumeThreshold')) || settings.volumeThreshold,
+    musicVolume: params.has('musicVolume')
+      ? Number(params.get('musicVolume'))
       : settings.musicVolume,
   };
 
@@ -62,13 +64,16 @@ async function startCapture(streamId) {
     mediaStream = await navigator.mediaDevices.getUserMedia({
       audio: {
         mandatory: {
-          chromeMediaSource: "tab",
+          chromeMediaSource: 'tab',
           chromeMediaSourceId: streamId,
         },
       },
     });
   } catch (err) {
-    console.error("[ElevatorMeet] getUserMedia failed — capture never started:", err);
+    console.error(
+      '[ElevatorMeet] getUserMedia failed — capture never started:',
+      err
+    );
     return;
   }
 
@@ -99,7 +104,7 @@ async function startCapture(streamId) {
   monitorLoop();
 }
 
-musicEl.addEventListener("error", () => {
+musicEl.addEventListener('error', () => {
   console.error(
     "[ElevatorMeet] Failed to load elevator-music.mp3 — make sure a real mp3 file named exactly 'elevator-music.mp3' exists at the extension's root folder.",
     musicEl.error
@@ -144,7 +149,9 @@ function fadeInAndPlay() {
   clearInterval(fadeIntervalId);
   musicEl.currentTime = 0;
   musicEl.volume = 0;
-  musicEl.play().catch((err) => console.warn("ElevatorMeet play() failed:", err));
+  musicEl
+    .play()
+    .catch((err) => console.warn('ElevatorMeet play() failed:', err));
 
   const target = settings.musicVolume;
   const steps = 20;

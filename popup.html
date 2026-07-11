@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <meta charset="utf-8" />
@@ -6,7 +6,7 @@
     <style>
       body {
         width: 260px;
-        font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+        font-family: -apple-system, 'Segoe UI', Roboto, sans-serif;
         margin: 0;
         padding: 16px;
         color: #1f2430;
@@ -33,7 +33,7 @@
         font-weight: 600;
         color: #4338ca;
       }
-      input[type="range"] {
+      input[type='range'] {
         width: 100%;
       }
       button {
@@ -66,18 +66,37 @@
     <p class="subtitle">Fills the awkward silence, then gets out of the way.</p>
 
     <div class="row">
-      <label>Silence before music <span class="val" id="silenceVal">5s</span></label>
-      <input type="range" id="silenceRange" min="2" max="15" step="1" value="5" />
+      <label
+        >Silence before music <span class="val" id="silenceVal">5s</span></label
+      >
+      <input
+        type="range"
+        id="silenceRange"
+        min="2"
+        max="15"
+        step="1"
+        value="5"
+      />
     </div>
 
     <div class="row">
-      <label>Sensitivity (lower = more sensitive) <span class="val" id="volVal">6</span></label>
+      <label
+        >Sensitivity (lower = more sensitive)
+        <span class="val" id="volVal">6</span></label
+      >
       <input type="range" id="volRange" min="1" max="30" step="1" value="6" />
     </div>
 
     <div class="row">
       <label>Music volume <span class="val" id="musicVolVal">50%</span></label>
-      <input type="range" id="musicVolRange" min="0" max="100" step="5" value="50" />
+      <input
+        type="range"
+        id="musicVolRange"
+        min="0"
+        max="100"
+        step="5"
+        value="50"
+      />
     </div>
 
     <button id="toggleBtn">Start</button>

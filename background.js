@@ -13,7 +13,7 @@
 
 async function getOffscreenDocument() {
   const existing = await chrome.runtime.getContexts({
-    contextTypes: ["OFFSCREEN_DOCUMENT"],
+    contextTypes: ['OFFSCREEN_DOCUMENT'],
   });
   return existing[0] || null;
 }
@@ -34,20 +34,20 @@ function safeSendMessage(message) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   // Only handle messages coming from the popup (they won't have a `target`
   // field the offscreen doc sets, so we can tell them apart).
-  if (message.target === "offscreen") return false;
+  if (message.target === 'offscreen') return false;
 
   (async () => {
     try {
-      if (message.type === "START") {
+      if (message.type === 'START') {
         const [tab] = await chrome.tabs.query({
           active: true,
           currentWindow: true,
         });
 
-        if (!tab || !tab.url || !tab.url.includes("meet.google.com")) {
+        if (!tab || !tab.url || !tab.url.includes('meet.google.com')) {
           sendResponse({
             ok: false,
-            error: "Open a Google Meet tab and make it active first.",
+            error: 'Open a Google Meet tab and make it active first.',
           });
           return;
         }
@@ -70,24 +70,24 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         await chrome.offscreen.createDocument({
           url: `offscreen.html?${params.toString()}`,
-          reasons: ["USER_MEDIA"],
+          reasons: ['USER_MEDIA'],
           justification:
-            "Analyze Google Meet tab audio levels and play elevator music during silence.",
+            'Analyze Google Meet tab audio levels and play elevator music during silence.',
         });
 
         await chrome.storage.local.set({ running: true, tabId: tab.id });
         sendResponse({ ok: true });
-      } else if (message.type === "STOP") {
+      } else if (message.type === 'STOP') {
         // Closing the offscreen document tears down its AudioContext and
         // media stream automatically — more reliable than messaging it.
         await closeOffscreenDocumentIfExists();
         await chrome.storage.local.set({ running: false });
         sendResponse({ ok: true });
-      } else if (message.type === "UPDATE_SETTINGS") {
+      } else if (message.type === 'UPDATE_SETTINGS') {
         if (await getOffscreenDocument()) {
           safeSendMessage({
-            target: "offscreen",
-            type: "UPDATE_SETTINGS",
+            target: 'offscreen',
+            type: 'UPDATE_SETTINGS',
             settings: message.settings,
           });
         }
@@ -104,8 +104,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // If the tab being captured closes/navigates away, stop cleanly.
 chrome.tabs.onRemoved.addListener(async (tabId) => {
   const { tabId: capturedTabId, running } = await chrome.storage.local.get([
-    "tabId",
-    "running",
+    'tabId',
+    'running',
   ]);
   if (running && tabId === capturedTabId) {
     await closeOffscreenDocumentIfExists();
