@@ -1,29 +1,34 @@
 // background.js — MV3 service worker
 // Responsible for: getting a tabCapture stream id for the active Meet tab,
-// spinning up the offscreen document (service workers can't touch
-// AudioContext/MediaStream themselves), and relaying settings changes.
+// and spinning up the offscreen document (service workers can't touch
+// AudioContext/MediaStream themselves).
+//
+// IMPORTANT: chrome.offscreen.createDocument() resolves as soon as the
+// document *starts* loading, not once its script has finished running and
+// registered a message listener. Sending it a message right after creation
+// is a race condition ("Could not establish connection. Receiving end does
+// not exist."). To avoid that entirely, we pass the stream id + settings as
+// URL query params, which offscreen.js reads synchronously on load — no
+// messaging handshake required to get started.
 
-let creatingOffscreen = null;
-
-async function ensureOffscreenDocument() {
+async function getOffscreenDocument() {
   const existing = await chrome.runtime.getContexts({
     contextTypes: ["OFFSCREEN_DOCUMENT"],
   });
-  if (existing.length > 0) return;
+  return existing[0] || null;
+}
 
-  if (creatingOffscreen) {
-    await creatingOffscreen;
-    return;
+async function closeOffscreenDocumentIfExists() {
+  if (await getOffscreenDocument()) {
+    await chrome.offscreen.closeDocument();
   }
+}
 
-  creatingOffscreen = chrome.offscreen.createDocument({
-    url: "offscreen.html",
-    reasons: ["USER_MEDIA"],
-    justification:
-      "Analyze Google Meet tab audio levels and play elevator music during silence.",
-  });
-  await creatingOffscreen;
-  creatingOffscreen = null;
+function safeSendMessage(message) {
+  // Fire-and-forget to the offscreen doc. If it isn't there (e.g. settings
+  // changed before Start was ever clicked), swallow the "no receiver" error
+  // instead of letting it surface as an uncaught rejection.
+  chrome.runtime.sendMessage(message).catch(() => {});
 }
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -47,34 +52,45 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           return;
         }
 
-        await ensureOffscreenDocument();
-
         const streamId = await chrome.tabCapture.getMediaStreamId({
           targetTabId: tab.id,
         });
 
-        chrome.runtime.sendMessage({
-          target: "offscreen",
-          type: "START_CAPTURE",
+        // Always start from a clean offscreen document so there's no stale
+        // AudioContext/listener state from a previous run.
+        await closeOffscreenDocumentIfExists();
+
+        const settings = message.settings || {};
+        const params = new URLSearchParams({
           streamId,
-          settings: message.settings,
+          silenceThreshold: settings.silenceThreshold ?? 5,
+          volumeThreshold: settings.volumeThreshold ?? 6,
+          musicVolume: settings.musicVolume ?? 0.5,
+        });
+
+        await chrome.offscreen.createDocument({
+          url: `offscreen.html?${params.toString()}`,
+          reasons: ["USER_MEDIA"],
+          justification:
+            "Analyze Google Meet tab audio levels and play elevator music during silence.",
         });
 
         await chrome.storage.local.set({ running: true, tabId: tab.id });
         sendResponse({ ok: true });
       } else if (message.type === "STOP") {
-        chrome.runtime.sendMessage({
-          target: "offscreen",
-          type: "STOP_CAPTURE",
-        });
+        // Closing the offscreen document tears down its AudioContext and
+        // media stream automatically — more reliable than messaging it.
+        await closeOffscreenDocumentIfExists();
         await chrome.storage.local.set({ running: false });
         sendResponse({ ok: true });
       } else if (message.type === "UPDATE_SETTINGS") {
-        chrome.runtime.sendMessage({
-          target: "offscreen",
-          type: "UPDATE_SETTINGS",
-          settings: message.settings,
-        });
+        if (await getOffscreenDocument()) {
+          safeSendMessage({
+            target: "offscreen",
+            type: "UPDATE_SETTINGS",
+            settings: message.settings,
+          });
+        }
         sendResponse({ ok: true });
       }
     } catch (err) {
@@ -92,7 +108,7 @@ chrome.tabs.onRemoved.addListener(async (tabId) => {
     "running",
   ]);
   if (running && tabId === capturedTabId) {
-    chrome.runtime.sendMessage({ target: "offscreen", type: "STOP_CAPTURE" });
+    await closeOffscreenDocumentIfExists();
     await chrome.storage.local.set({ running: false });
   }
 });

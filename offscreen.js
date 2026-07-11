@@ -9,7 +9,7 @@ let sourceNode = null;
 let passthroughGain = null;
 let analyser = null;
 let dataArray = null;
-let rafId = null;
+let monitorIntervalId = null;
 let mediaStream = null;
 
 let silenceStartedAt = null; // ms timestamp, or null if currently "talking"
@@ -27,28 +27,50 @@ let settings = {
 chrome.runtime.onMessage.addListener((message) => {
   if (message.target !== "offscreen") return;
 
-  if (message.type === "START_CAPTURE") {
-    settings = { ...settings, ...(message.settings || {}) };
-    startCapture(message.streamId);
-  } else if (message.type === "STOP_CAPTURE") {
+  if (message.type === "STOP_CAPTURE") {
     stopCapture();
   } else if (message.type === "UPDATE_SETTINGS") {
     settings = { ...settings, ...(message.settings || {}) };
   }
 });
 
+// This document is (re)created fresh by background.js every time Start is
+// clicked, with the stream id and initial settings baked into the URL —
+// avoids the race where a message arrives before this script has loaded.
+(function initFromUrl() {
+  const params = new URLSearchParams(location.search);
+  const streamId = params.get("streamId");
+  if (!streamId) return; // opened with no params, e.g. dev preview — no-op
+
+  settings = {
+    ...settings,
+    silenceThreshold: Number(params.get("silenceThreshold")) || settings.silenceThreshold,
+    volumeThreshold: Number(params.get("volumeThreshold")) || settings.volumeThreshold,
+    musicVolume: params.has("musicVolume")
+      ? Number(params.get("musicVolume"))
+      : settings.musicVolume,
+  };
+
+  startCapture(streamId);
+})();
+
 async function startCapture(streamId) {
   // Clean up any previous run first.
   stopCapture();
 
-  mediaStream = await navigator.mediaDevices.getUserMedia({
-    audio: {
-      mandatory: {
-        chromeMediaSource: "tab",
-        chromeMediaSourceId: streamId,
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        mandatory: {
+          chromeMediaSource: "tab",
+          chromeMediaSourceId: streamId,
+        },
       },
-    },
-  });
+    });
+  } catch (err) {
+    console.error("[ElevatorMeet] getUserMedia failed — capture never started:", err);
+    return;
+  }
 
   audioContext = new AudioContext();
   sourceNode = audioContext.createMediaStreamSource(mediaStream);
@@ -77,7 +99,20 @@ async function startCapture(streamId) {
   monitorLoop();
 }
 
+musicEl.addEventListener("error", () => {
+  console.error(
+    "[ElevatorMeet] Failed to load elevator-music.mp3 — make sure a real mp3 file named exactly 'elevator-music.mp3' exists at the extension's root folder.",
+    musicEl.error
+  );
+});
+
 function monitorLoop() {
+  // setInterval, not requestAnimationFrame — offscreen documents are never
+  // actually painted to screen, so rAF callbacks never fire here.
+  monitorIntervalId = setInterval(monitorTick, 50); // ~20 checks/sec
+}
+
+function monitorTick() {
   analyser.getByteTimeDomainData(dataArray);
 
   // RMS of the waveform, roughly 0-100.
@@ -102,8 +137,6 @@ function monitorLoop() {
       fadeInAndPlay();
     }
   }
-
-  rafId = requestAnimationFrame(monitorLoop);
 }
 
 function fadeInAndPlay() {
@@ -142,7 +175,7 @@ function fadeOutAndPause() {
 }
 
 function stopCapture() {
-  cancelAnimationFrame(rafId);
+  clearInterval(monitorIntervalId);
   clearInterval(fadeIntervalId);
   musicEl.pause();
   musicIsPlaying = false;
