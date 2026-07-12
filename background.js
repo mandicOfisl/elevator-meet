@@ -66,6 +66,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           silenceThreshold: settings.silenceThreshold ?? 5,
           volumeThreshold: settings.volumeThreshold ?? 6,
           musicVolume: settings.musicVolume ?? 0.5,
+          fadeInMs: settings.fadeInMs ?? 400,
+          fadeOutMs: settings.fadeOutMs ?? 400,
         });
 
         await chrome.offscreen.createDocument({

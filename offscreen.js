@@ -21,7 +21,8 @@ let settings = {
   silenceThreshold: 5, // seconds of silence before music starts
   volumeThreshold: 6, // 0-100 RMS-ish level below which we count as "quiet"
   musicVolume: 0.5, // 0-1
-  fadeMs: 400, // fade in/out duration
+  fadeInMs: 400, // fade-in duration when music starts
+  fadeOutMs: 400, // fade-out duration when music stops
 };
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -51,6 +52,12 @@ chrome.runtime.onMessage.addListener((message) => {
     musicVolume: params.has('musicVolume')
       ? Number(params.get('musicVolume'))
       : settings.musicVolume,
+    fadeInMs: params.has('fadeInMs')
+      ? Number(params.get('fadeInMs'))
+      : settings.fadeInMs,
+    fadeOutMs: params.has('fadeOutMs')
+      ? Number(params.get('fadeOutMs'))
+      : settings.fadeOutMs,
   };
 
   startCapture(streamId);
@@ -148,14 +155,24 @@ function fadeInAndPlay() {
   musicIsPlaying = true;
   clearInterval(fadeIntervalId);
   musicEl.currentTime = 0;
+
+  const target = settings.musicVolume;
+
+  if (settings.fadeInMs <= 0) {
+    musicEl.volume = target;
+    musicEl
+      .play()
+      .catch((err) => console.warn('ElevatorMeet play() failed:', err));
+    return;
+  }
+
   musicEl.volume = 0;
   musicEl
     .play()
     .catch((err) => console.warn('ElevatorMeet play() failed:', err));
 
-  const target = settings.musicVolume;
   const steps = 20;
-  const stepTime = settings.fadeMs / steps;
+  const stepTime = settings.fadeInMs / steps;
   let i = 0;
   fadeIntervalId = setInterval(() => {
     i++;
@@ -167,9 +184,15 @@ function fadeInAndPlay() {
 function fadeOutAndPause() {
   musicIsPlaying = false;
   clearInterval(fadeIntervalId);
+
+  if (settings.fadeOutMs <= 0) {
+    musicEl.pause();
+    return;
+  }
+
   const startVolume = musicEl.volume;
   const steps = 20;
-  const stepTime = settings.fadeMs / steps;
+  const stepTime = settings.fadeOutMs / steps;
   let i = 0;
   fadeIntervalId = setInterval(() => {
     i++;
