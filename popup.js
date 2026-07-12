@@ -1,3 +1,17 @@
+const PRELOADED_TRACKS = [
+  {
+    id: 'track:1',
+    name: 'Smooth Jazz',
+    path: 'tracks/track-1.mp3',
+  },
+  {
+    id: 'track:2',
+    name: 'Bossa Nova',
+    path: 'tracks/track-2.mp3',
+  },
+  { id: 'track:3', name: 'LoFi', path: 'tracks/track-3.mp3' },
+];
+
 const silenceRange = document.getElementById('silenceRange');
 const volRange = document.getElementById('volRange');
 const musicVolRange = document.getElementById('musicVolRange');
@@ -8,6 +22,7 @@ const volVal = document.getElementById('volVal');
 const musicVolVal = document.getElementById('musicVolVal');
 const fadeInVal = document.getElementById('fadeInVal');
 const fadeOutVal = document.getElementById('fadeOutVal');
+const trackSelect = document.getElementById('trackSelect');
 const toggleBtn = document.getElementById('toggleBtn');
 const statusEl = document.getElementById('status');
 
@@ -18,6 +33,7 @@ function currentSettings() {
     musicVolume: Number(musicVolRange.value) / 100,
     fadeInMs: Number(fadeInRange.value) * 1000,
     fadeOutMs: Number(fadeOutRange.value) * 1000,
+    trackId: trackSelect.value,
   };
 }
 
@@ -29,6 +45,21 @@ function refreshLabels() {
   fadeOutVal.textContent = `${Number(fadeOutRange.value).toFixed(1)}s`;
 }
 
+function populateTrackSelect(selectedId) {
+  trackSelect.innerHTML = '';
+  PRELOADED_TRACKS.forEach((t) => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.name;
+    trackSelect.appendChild(opt);
+  });
+
+  const validIds = PRELOADED_TRACKS.map((t) => t.id);
+  trackSelect.value = validIds.includes(selectedId)
+    ? selectedId
+    : PRELOADED_TRACKS[0].id;
+}
+
 async function init() {
   const stored = await chrome.storage.local.get([
     'silenceThreshold',
@@ -36,6 +67,7 @@ async function init() {
     'musicVolume',
     'fadeInMs',
     'fadeOutMs',
+    'trackId',
     'running',
   ]);
 
@@ -46,6 +78,7 @@ async function init() {
   if (stored.fadeInMs != null) fadeInRange.value = stored.fadeInMs / 1000;
   if (stored.fadeOutMs != null) fadeOutRange.value = stored.fadeOutMs / 1000;
 
+  populateTrackSelect(stored.trackId);
   refreshLabels();
   setRunningUI(!!stored.running);
 }
@@ -55,16 +88,24 @@ function setRunningUI(running) {
   toggleBtn.classList.toggle('running', running);
 }
 
+async function pushSettingsUpdate() {
+  const settings = currentSettings();
+  await chrome.storage.local.set(settings);
+  chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
+}
+
 [silenceRange, volRange, musicVolRange, fadeInRange, fadeOutRange].forEach(
   (el) => {
-    el.addEventListener('input', async () => {
+    el.addEventListener('input', () => {
       refreshLabels();
-      const settings = currentSettings();
-      await chrome.storage.local.set(settings);
-      chrome.runtime.sendMessage({ type: 'UPDATE_SETTINGS', settings });
+      pushSettingsUpdate();
     });
   }
 );
+
+trackSelect.addEventListener('change', () => {
+  pushSettingsUpdate();
+});
 
 toggleBtn.addEventListener('click', async () => {
   const { running } = await chrome.storage.local.get('running');

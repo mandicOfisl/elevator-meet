@@ -68,6 +68,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           musicVolume: settings.musicVolume ?? 0.5,
           fadeInMs: settings.fadeInMs ?? 400,
           fadeOutMs: settings.fadeOutMs ?? 400,
+          trackId: settings.trackId ?? 'track:1',
         });
 
         await chrome.offscreen.createDocument({

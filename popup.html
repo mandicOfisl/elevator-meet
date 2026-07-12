@@ -36,6 +36,16 @@
       input[type='range'] {
         width: 100%;
       }
+      select {
+        width: 100%;
+        padding: 6px 8px;
+        font-size: 12px;
+        border-radius: 6px;
+        border: 1px solid #d1d5db;
+        background: white;
+        color: #1f2430;
+        box-sizing: border-box;
+      }
       button {
         width: 100%;
         padding: 9px 0;
@@ -64,6 +74,11 @@
   <body>
     <h1>🛗 ElevatorMeet</h1>
     <p class="subtitle">Fills the awkward silence, then gets out of the way.</p>
+
+    <div class="row">
+      <label>Track</label>
+      <select id="trackSelect"></select>
+    </div>
 
     <div class="row">
       <label

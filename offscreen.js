@@ -4,6 +4,13 @@
 
 const musicEl = document.getElementById('music');
 
+// Must mirror PRELOADED_TRACKS in popup.js.
+const PRELOADED_TRACKS = {
+  'track:1': 'tracks/track-1.mp3',
+  'track:2': 'tracks/track-2.mp3',
+  'track:3': 'tracks/track-3.mp3',
+};
+
 let audioContext = null;
 let sourceNode = null;
 let passthroughGain = null;
@@ -15,6 +22,7 @@ let mediaStream = null;
 let silenceStartedAt = null; // ms timestamp, or null if currently "talking"
 let musicIsPlaying = false;
 let fadeIntervalId = null;
+let currentTrackId = null;
 
 // Defaults — overwritten by settings sent from the popup.
 let settings = {
@@ -23,6 +31,7 @@ let settings = {
   musicVolume: 0.5, // 0-1
   fadeInMs: 400, // fade-in duration when music starts
   fadeOutMs: 400, // fade-out duration when music stops
+  trackId: 'track:1',
 };
 
 chrome.runtime.onMessage.addListener((message) => {
@@ -31,9 +40,37 @@ chrome.runtime.onMessage.addListener((message) => {
   if (message.type === 'STOP_CAPTURE') {
     stopCapture();
   } else if (message.type === 'UPDATE_SETTINGS') {
-    settings = { ...settings, ...(message.settings || {}) };
+    const newSettings = message.settings || {};
+    const trackChanged =
+      newSettings.trackId && newSettings.trackId !== settings.trackId;
+    settings = { ...settings, ...newSettings };
+    if (trackChanged) loadTrack(settings.trackId);
   }
 });
+
+// Loads one of the 3 bundled tracks (tracks/track-N.mp3) by trackId.
+function loadTrack(trackId) {
+  if (!PRELOADED_TRACKS[trackId]) {
+    console.error(
+      '[ElevatorMeet] Unknown trackId, falling back to first preloaded track:',
+      trackId
+    );
+    trackId = 'track:1';
+  }
+
+  currentTrackId = trackId;
+  const wasPlaying = musicIsPlaying;
+
+  musicEl.src = chrome.runtime.getURL(PRELOADED_TRACKS[trackId]);
+  musicEl.loop = true;
+  musicEl.volume = settings.musicVolume;
+
+  if (wasPlaying) {
+    musicEl
+      .play()
+      .catch((err) => console.warn('ElevatorMeet play() failed:', err));
+  }
+}
 
 // This document is (re)created fresh by background.js every time Start is
 // clicked, with the stream id and initial settings baked into the URL —
@@ -58,6 +95,7 @@ chrome.runtime.onMessage.addListener((message) => {
     fadeOutMs: params.has('fadeOutMs')
       ? Number(params.get('fadeOutMs'))
       : settings.fadeOutMs,
+    trackId: params.get('trackId') || settings.trackId,
   };
 
   startCapture(streamId);
@@ -104,6 +142,7 @@ async function startCapture(streamId) {
 
   musicEl.loop = true;
   musicEl.volume = settings.musicVolume;
+  loadTrack(settings.trackId);
 
   silenceStartedAt = null;
   musicIsPlaying = false;
@@ -113,7 +152,8 @@ async function startCapture(streamId) {
 
 musicEl.addEventListener('error', () => {
   console.error(
-    "[ElevatorMeet] Failed to load elevator-music.mp3 — make sure a real mp3 file named exactly 'elevator-music.mp3' exists at the extension's root folder.",
+    "[ElevatorMeet] Failed to load the selected track — if it's a preloaded slot, make sure a real mp3 exists at that path in the tracks/ folder.",
+    currentTrackId,
     musicEl.error
   );
 });
