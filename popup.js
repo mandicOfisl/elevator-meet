@@ -25,6 +25,7 @@ const fadeOutVal = document.getElementById('fadeOutVal');
 const trackSelect = document.getElementById('trackSelect');
 const toggleBtn = document.getElementById('toggleBtn');
 const statusEl = document.getElementById('status');
+const statusIndicatorEl = document.getElementById('statusIndicator');
 
 function currentSettings() {
   return {
@@ -86,6 +87,7 @@ async function init() {
 function setRunningUI(running) {
   toggleBtn.textContent = running ? 'Stop' : 'Start';
   toggleBtn.classList.toggle('running', running);
+  toggleBtn.ariaPressed = running ? 'true' : 'false';
 }
 
 async function pushSettingsUpdate() {
@@ -118,14 +120,18 @@ toggleBtn.addEventListener('click', async () => {
     });
     if (response && response.ok) {
       setRunningUI(true);
-      statusEl.textContent = 'Listening for silence.';
+      statusEl.textContent = 'Listening for silence';
+      statusIndicatorEl.style.backgroundColor = '#ff7000';
+      statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #ff7000';
     } else {
       statusEl.textContent = response?.error || 'Could not start.';
     }
   } else {
     await chrome.runtime.sendMessage({ type: 'STOP' });
     setRunningUI(false);
-    statusEl.textContent = 'Stopped.';
+    statusEl.textContent = 'Standby';
+    statusIndicatorEl.style.backgroundColor = '#dc2626';
+    statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #dc2626';
   }
 });
 
