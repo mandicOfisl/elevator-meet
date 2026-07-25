@@ -67,6 +67,12 @@
         width: 100%;
         accent-color: #ff7000;
       }
+      .range-desc {
+        display: flex;
+        justify-content: space-between;
+        font-size: 9px;
+        color: #b9cacbdd;
+      }
       select {
         width: 100%;
         padding: 6px 8px;
@@ -99,7 +105,7 @@
       #status {
         font-family: monospace;
         font-size: 12px;
-        color: #6b7280;
+        color: #707786;
       }
       #statusIndicator {
         display: inline-block;
@@ -189,12 +195,20 @@
     <div class="content">
       <div class="row">
         <label for="trackSelect">TRACK</label>
-        <select id="trackSelect"></select>
+        <select
+          id="trackSelect"
+          aria-description="Select a track to play in the background"
+        ></select>
       </div>
 
       <div class="row">
-        <label for="silenceRange"
-          >SILENCE (sec) <span class="val" id="silenceVal">5s</span></label
+        <label for="silenceRange" title="title"
+          >SILENCE<span
+            class="val"
+            id="silenceVal"
+            aria-description="Set the time in seconds to wait for silence before music starts"
+            >5s</span
+          ></label
         >
         <input
           type="range"
@@ -207,16 +221,25 @@
       </div>
 
       <div class="row">
+        <!-- TODO refactor label and value layout -->
         <label for="volRange"
-          >THRESHOLD (lower = more sensitive)
-          <span class="val" id="volVal">6</span></label
+          >THRESHOLD<span
+            class="val"
+            id="volVal"
+            aria-description="Set the listening threshold - lower is more sensitive"
+            >6</span
+          ></label
         >
+        <div class="range-desc">
+          <span>more sensitive</span>
+          <span>less sensitive</span>
+        </div>
         <input type="range" id="volRange" min="1" max="30" step="1" value="6" />
       </div>
 
       <div class="row">
         <label for="fadeInRange"
-          >FADE IN (sec) <span class="val" id="fadeInVal">0.4s</span></label
+          >FADE IN<span class="val" id="fadeInVal">0.4s</span></label
         >
         <input
           type="range"
@@ -225,12 +248,13 @@
           max="5"
           step="0.1"
           value="0.4"
+          aria-description="Set the music fade-in time"
         />
       </div>
 
       <div class="row">
         <label for="fadeOutRange"
-          >FADE OUT (sec) <span class="val" id="fadeOutVal">0.4s</span></label
+          >FADE OUT<span class="val" id="fadeOutVal">0.4s</span></label
         >
         <input
           type="range"
@@ -239,12 +263,13 @@
           max="2"
           step="0.1"
           value="0.4"
+          aria-description="Set the music fade-out time"
         />
       </div>
 
       <div class="row">
         <label for="musicVolRange"
-          >VOLUME <span class="val" id="musicVolVal">50%</span></label
+          >VOLUME<span class="val" id="musicVolVal">50%</span></label
         >
         <input
           type="range"
@@ -253,10 +278,17 @@
           max="100"
           step="5"
           value="50"
+          aria-description="Set the music volume level"
         />
       </div>
 
-      <button id="toggleBtn" aria-pressed="false">Start</button>
+      <button
+        id="toggleBtn"
+        aria-pressed="false"
+        aria-description="Start listening to silence"
+      >
+        Start
+      </button>
     </div>
 
     <footer>
