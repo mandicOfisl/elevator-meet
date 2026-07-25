@@ -70,6 +70,7 @@ async function init() {
     'fadeOutMs',
     'trackId',
     'running',
+    'musicPlaying',
   ]);
 
   if (stored.silenceThreshold) silenceRange.value = stored.silenceThreshold;
@@ -82,6 +83,10 @@ async function init() {
   populateTrackSelect(stored.trackId);
   refreshLabels();
   setRunningUI(!!stored.running);
+  updateStatusUI({
+    running: !!stored.running,
+    musicPlaying: !!stored.musicPlaying,
+  });
 }
 
 function setRunningUI(running) {
@@ -89,6 +94,34 @@ function setRunningUI(running) {
   toggleBtn.classList.toggle('running', running);
   toggleBtn.ariaPressed = running ? 'true' : 'false';
 }
+
+// Drives the footer text + indicator dot from the two bits of state that
+// matter: is capture running at all, and is music actually audible right
+// now. musicPlaying is written by offscreen.js off the real <audio>
+// element's playing/pause events, so this stays correct even if music
+// starts/stops while the popup happens to be closed.
+function updateStatusUI({ running, musicPlaying }) {
+  if (!running) {
+    statusEl.textContent = 'Standby';
+    statusIndicatorEl.style.backgroundColor = '#dc2626';
+    statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #dc2626';
+  } else if (musicPlaying) {
+    statusEl.textContent = 'Playing music';
+    statusIndicatorEl.style.backgroundColor = '#22c55e';
+    statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #22c55e';
+  } else {
+    statusEl.textContent = 'Listening for silence';
+    statusIndicatorEl.style.backgroundColor = '#ff7000';
+    statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #ff7000';
+  }
+}
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local') return;
+  if (changes.running || changes.musicPlaying) {
+    chrome.storage.local.get(['running', 'musicPlaying']).then(updateStatusUI);
+  }
+});
 
 async function pushSettingsUpdate() {
   const settings = currentSettings();
@@ -120,18 +153,14 @@ toggleBtn.addEventListener('click', async () => {
     });
     if (response && response.ok) {
       setRunningUI(true);
-      statusEl.textContent = 'Listening for silence';
-      statusIndicatorEl.style.backgroundColor = '#ff7000';
-      statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #ff7000';
+      await chrome.storage.local.set({ running: true, musicPlaying: false });
     } else {
       statusEl.textContent = response?.error || 'Could not start.';
     }
   } else {
     await chrome.runtime.sendMessage({ type: 'STOP' });
     setRunningUI(false);
-    statusEl.textContent = 'Standby';
-    statusIndicatorEl.style.backgroundColor = '#dc2626';
-    statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #dc2626';
+    await chrome.storage.local.set({ running: false, musicPlaying: false });
   }
 });
 

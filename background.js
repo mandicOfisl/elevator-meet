@@ -95,6 +95,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
         }
         sendResponse({ ok: true });
+      } else if (message.type === 'PLAYBACK_STATE') {
+        // Relayed from offscreen.js, which can't reliably reach
+        // chrome.storage directly in every environment — background.js's
+        // access to it is solid, so it does the write on offscreen's behalf.
+        await chrome.storage.local.set({ musicPlaying: !!message.playing });
+        sendResponse({ ok: true });
       }
     } catch (err) {
       sendResponse({ ok: false, error: err.message });

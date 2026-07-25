@@ -34,6 +34,20 @@ let settings = {
   trackId: 'track:1',
 };
 
+// chrome.storage isn't reachable directly from this offscreen document in
+// some environments, even though the "storage" permission is declared and
+// chrome.storage works fine in background.js/popup.js. Rather than doing
+// the write here, relay playback state to the background service worker
+// (chrome.runtime messaging is already proven to work from this document —
+// that's how STOP_CAPTURE/UPDATE_SETTINGS get delivered) and let it do the write.
+function notifyPlaybackState(playing) {
+  chrome.runtime
+    .sendMessage({ type: 'PLAYBACK_STATE', playing })
+    .catch((err) =>
+      console.warn('[ElevatorMeet] Could not notify playback state:', err)
+    );
+}
+
 chrome.runtime.onMessage.addListener((message) => {
   if (message.target !== 'offscreen') return;
 
@@ -146,6 +160,7 @@ async function startCapture(streamId) {
 
   silenceStartedAt = null;
   musicIsPlaying = false;
+  notifyPlaybackState(false);
 
   monitorLoop();
 }
@@ -156,6 +171,16 @@ musicEl.addEventListener('error', () => {
     currentTrackId,
     musicEl.error
   );
+});
+
+// Reflect the *actual* audio element state (not just our intent) so the
+// popup's footer can show "playing" vs "listening" correctly — including
+// when it was closed and gets reopened later.
+musicEl.addEventListener('playing', () => {
+  notifyPlaybackState(true);
+});
+musicEl.addEventListener('pause', () => {
+  notifyPlaybackState(false);
 });
 
 function monitorLoop() {
