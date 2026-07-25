@@ -57,8 +57,18 @@ chrome.runtime.onMessage.addListener((message) => {
     const newSettings = message.settings || {};
     const trackChanged =
       newSettings.trackId && newSettings.trackId !== settings.trackId;
+    const volumeChanged =
+      newSettings.musicVolume != null &&
+      newSettings.musicVolume !== settings.musicVolume;
     settings = { ...settings, ...newSettings };
     if (trackChanged) loadTrack(settings.trackId);
+    // Apply immediately, even mid-playback — not just at the next fade.
+    // Also cancel any fade in progress, since its old target volume is now
+    // stale and would otherwise fight the slider on its next tick.
+    if (volumeChanged) {
+      clearInterval(fadeIntervalId);
+      musicEl.volume = settings.musicVolume;
+    }
   }
 });
 
