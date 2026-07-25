@@ -108,7 +108,7 @@
         border-radius: 50%;
         background-color: #dc2626;
         margin-right: 6px;
-        box-shadow: 0px 0px 3px 2px #dc2626;
+        box-shadow: 0 0 3px 2px #dc2626;
       }
       footer {
         background-color: #000000;
@@ -124,7 +124,6 @@
     </style>
   </head>
   <body>
-    <!-- Top App Bar (Header) -->
     <header>
       <div class="title">
         <svg
@@ -189,12 +188,14 @@
 
     <div class="content">
       <div class="row">
-        <label>TRACK</label>
+        <label for="trackSelect">TRACK</label>
         <select id="trackSelect"></select>
       </div>
 
       <div class="row">
-        <label>SILENCE (sec) <span class="val" id="silenceVal">5s</span></label>
+        <label for="silenceRange"
+          >SILENCE (sec) <span class="val" id="silenceVal">5s</span></label
+        >
         <input
           type="range"
           id="silenceRange"
@@ -206,7 +207,7 @@
       </div>
 
       <div class="row">
-        <label
+        <label for="volRange"
           >THRESHOLD (lower = more sensitive)
           <span class="val" id="volVal">6</span></label
         >
@@ -214,7 +215,7 @@
       </div>
 
       <div class="row">
-        <label
+        <label for="fadeInRange"
           >FADE IN (sec) <span class="val" id="fadeInVal">0.4s</span></label
         >
         <input
@@ -228,7 +229,7 @@
       </div>
 
       <div class="row">
-        <label
+        <label for="fadeOutRange"
           >FADE OUT (sec) <span class="val" id="fadeOutVal">0.4s</span></label
         >
         <input
@@ -242,7 +243,9 @@
       </div>
 
       <div class="row">
-        <label>VOLUME <span class="val" id="musicVolVal">50%</span></label>
+        <label for="musicVolRange"
+          >VOLUME <span class="val" id="musicVolVal">50%</span></label
+        >
         <input
           type="range"
           id="musicVolRange"
