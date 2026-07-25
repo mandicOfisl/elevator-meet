@@ -159,8 +159,6 @@ musicEl.addEventListener('error', () => {
 });
 
 function monitorLoop() {
-  // setInterval, not requestAnimationFrame — offscreen documents are never
-  // actually painted to screen, so rAF callbacks never fire here.
   monitorIntervalId = setInterval(monitorTick, 50); // ~20 checks/sec
 }
 
@@ -170,6 +168,7 @@ function monitorTick() {
   // RMS of the waveform, roughly 0-100.
   let sumSquares = 0;
   for (let i = 0; i < dataArray.length; i++) {
+    // normalize to -1.0 - +1.0
     const norm = (dataArray[i] - 128) / 128;
     sumSquares += norm * norm;
   }
