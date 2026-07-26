@@ -49,8 +49,13 @@
         background-color: #232323;
         padding: 16px;
       }
-      .row {
+      .control-container {
         margin-bottom: 14px;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
       label {
         display: flex;
@@ -59,7 +64,7 @@
         margin-bottom: 4px;
         color: #b9cacb;
       }
-      label span.val {
+      span.val {
         font-weight: 600;
         color: #ff7000;
       }
@@ -195,7 +200,7 @@
     </header>
 
     <div class="content">
-      <div class="row">
+      <div class="control-container">
         <label for="trackSelect">TRACK</label>
         <select
           id="trackSelect"
@@ -203,15 +208,17 @@
         ></select>
       </div>
 
-      <div class="row">
-        <label for="silenceRange" title="title"
-          >SILENCE<span
+      <div class="control-container">
+        <div class="row">
+          <label for="silenceRange" title="title">SILENCE</label>
+          <span
             class="val"
             id="silenceVal"
             aria-description="Set the time in seconds to wait for silence before music starts"
-            >5s</span
-          ></label
-        >
+          >
+            5s
+          </span>
+        </div>
         <input
           type="range"
           id="silenceRange"
@@ -222,27 +229,29 @@
         />
       </div>
 
-      <div class="row">
-        <!-- TODO refactor label and value layout -->
-        <label for="volRange"
-          >THRESHOLD<span
+      <div class="control-container">
+        <div class="row">
+          <label for="volRange">THRESHOLD</label>
+          <span
             class="val"
             id="volVal"
             aria-description="Set the listening threshold - lower is more sensitive"
-            >6</span
-          ></label
-        >
+          >
+            6
+          </span>
+        </div>
+        <input type="range" id="volRange" min="1" max="30" step="1" value="6" />
         <div class="range-desc">
           <span>more sensitive</span>
           <span>less sensitive</span>
         </div>
-        <input type="range" id="volRange" min="1" max="30" step="1" value="6" />
       </div>
 
-      <div class="row">
-        <label for="fadeInRange"
-          >FADE IN<span class="val" id="fadeInVal">0.4s</span></label
-        >
+      <div class="control-container">
+        <div class="row">
+          <label for="fadeInRange">FADE IN</label>
+          <span class="val" id="fadeInVal">0.4s</span>
+        </div>
         <input
           type="range"
           id="fadeInRange"
@@ -254,10 +263,11 @@
         />
       </div>
 
-      <div class="row">
-        <label for="fadeOutRange"
-          >FADE OUT<span class="val" id="fadeOutVal">0.4s</span></label
-        >
+      <div class="control-container">
+        <div class="row">
+          <label for="fadeOutRange">FADE OUT</label>
+          <span class="val" id="fadeOutVal">0.4s</span>
+        </div>
         <input
           type="range"
           id="fadeOutRange"
@@ -269,10 +279,12 @@
         />
       </div>
 
-      <div class="row">
-        <label for="musicVolRange"
-          >VOLUME<span class="val" id="musicVolVal">50%</span></label
-        >
+      <div class="control-container">
+        <div class="row">
+          <label for="musicVolRange">VOLUME</label>
+          <span class="val" id="musicVolVal">50%</span>
+        </div>
+
         <input
           type="range"
           id="musicVolRange"
