@@ -1,67 +1,68 @@
-# ElevatorMeet (POC)
+# ElevatorMeet
 
-Plays elevator music during silent stretches of a Google Meet call, and stops
-the instant someone starts talking again.
+ElevatorMeet plays a background track during silent stretches of a Google
+Meet call, and stops the instant someone starts talking again — the audio
+equivalent of hold music, without anyone having to remember to turn it on
+or off.
 
 ## How it works
 
-- `chrome.tabCapture` grabs the audio stream of the active Google Meet tab.
-- An **offscreen document** (required in Manifest V3 — service workers can't
-  touch `AudioContext`/`MediaStream`) runs a Web Audio `AnalyserNode` on that
-  stream, computing an RMS volume level ~60 times/sec.
-- If the level stays below your sensitivity threshold for N seconds
-  (adjustable), it fades in your selected track on a loop.
-- As soon as volume spikes above the threshold (someone talks), the music
-  fades out and pauses.
-- The captured audio is also reconnected to the speakers (`audioContext.destination`),
-  since capturing a tab otherwise mutes it for the person running the extension.
+ElevatorMeet listens to the audio of the active Google Meet tab and
+measures its volume about 20 times per second. If the call stays quieter
+than your chosen sensitivity for a set number of seconds, it fades in one
+of three background tracks on a loop. As soon as someone starts talking
+again, the track fades out and stops.
 
-## Setup
+The extension only ever reads volume levels from the tab's audio — it does
+not record, store, transmit, or otherwise process anything you say. Nothing
+about a call is saved anywhere, on your device or elsewhere.
 
-1. **Add your own audio files.** Drop three mp3s into the `tracks/` folder,
-   named exactly:
-   - `tracks/track-1.mp3`
-   - `tracks/track-2.mp3`
-   - `tracks/track-3.mp3`
+## Permissions
 
-   These show up in the popup's track dropdown as "Classic Elevator",
-   "Smooth Jazz Hold", and "Corporate Hum" (rename them in `popup.js` /
-   `offscreen.js`'s `PRELOADED_TRACKS` if you want different labels).
-2. Open `chrome://extensions`, enable **Developer mode** (top right).
-3. Click **Load unpacked** and select this folder.
-4. Open a Google Meet call, click the ElevatorMeet toolbar icon, pick a
-   track, adjust sliders if you want, and click **Start**.
+Chrome extensions must declare upfront what they can access. Here is what
+ElevatorMeet requests and why:
+
+| Permission | Why it's needed |
+|---|---|
+| `tabCapture` | Reads the audio of the active Meet tab so ElevatorMeet can measure silence. This is the only way the extension "hears" the call. |
+| `offscreen` | Manifest V3 extensions require a hidden offscreen document to run audio analysis and playback, since the background service worker cannot use audio APIs directly. |
+| `storage` | Saves your settings (sensitivity, fade timing, chosen track, volume) locally so they persist between sessions. |
+| `activeTab` | Lets the extension act on the Meet tab you're currently viewing when you click Start. |
+| Host permission for `meet.google.com` | Restricts ElevatorMeet to only operating on Google Meet pages. |
+
+ElevatorMeet does not request access to your browsing history, other
+websites, or any account data, and has no network permissions — it cannot
+send anything anywhere.
 
 ## Settings
 
 | Control | What it does |
 |---|---|
-| Track | Choose from the 3 tracks bundled in the `tracks/` folder |
-| Silence before music | How many seconds of quiet trigger the music (2–15s) |
-| Sensitivity | RMS threshold below which audio counts as "silence" — lower = more sensitive (picks up on quieter background noise as "talking") |
-| Music volume | Playback volume of the elevator music |
-| Fade in speed | How long the music takes to fade in when silence starts (0–5s; 0 = instant) |
-| Fade out speed | How long the music takes to fade out when talking resumes (0–2s; 0 = instant) |
+| Track | Choose from three background tracks |
+| Silence before music | How many seconds of quiet trigger the music (2-15s) |
+| Threshold | Sensitivity of silence detection — lower values pick up on quieter sounds as "talking" |
+| Volume | Playback volume of the background track |
+| Fade in | How long the music takes to fade in when silence starts (0-5s; 0 is instant) |
+| Fade out | How long the music takes to fade out when talking resumes (0-2s; 0 is instant) |
 
-## Known limitations (this is a POC)
+## Privacy
 
-- **Tab must stay active/focused when you click Start**, since `tabCapture`
-  targets the currently active tab. Once running it keeps capturing even if
-  you switch tabs.
-- Only detects volume, not "is this actually speech" — a loud fan or
-  keyboard clatter could count as talking. A more robust version could add
-  simple voice-activity-detection (VAD) instead of raw RMS.
-- Only one tab can be captured at a time.
-- If you reload the Meet tab, you'll need to click Start again.
-- Tested for the "listen to sound levels + play/stop mp3" mechanic — polish
-  like icons, error states, and multi-tab support are left for a v2.
+ElevatorMeet does not collect, store, or transmit any personal data, call
+content, or audio recordings. All processing happens locally in your
+browser. Your settings are saved only to your own device via Chrome's
+local storage and are never sent anywhere.
 
-## File overview
+## Current limitations
 
-```
-manifest.json     – MV3 extension manifest
-background.js     – service worker: creates offscreen doc, gets tabCapture stream id
-offscreen.html/js – audio analysis + play/pause + track loading logic
-popup.html/js     – toolbar popup UI (track picker, sliders, start/stop)
-tracks/           – 🔊 you provide 3 preloaded mp3s here
-```
+- The Meet tab must be the active tab when you click Start, since audio
+  capture targets the currently focused tab. Once running, it keeps
+  listening even if you switch to another tab.
+- Detection is based on volume, not speech recognition — a loud fan or
+  typing noise can register as "talking."
+- Only one call can be monitored at a time.
+- If you reload the Meet tab, click Start again to resume.
+
+## Feedback
+
+Found a bug or have a feature request? Use the feedback link on the
+extension's Chrome Web Store listing page or visit the [GitHub repo](https://github.com/mandicOfisl/elevator-meet)
