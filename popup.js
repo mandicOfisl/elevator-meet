@@ -71,6 +71,7 @@ async function init() {
     'trackId',
     'running',
     'musicPlaying',
+    'micGranted',
   ]);
 
   if (stored.silenceThreshold) silenceRange.value = stored.silenceThreshold;
@@ -86,6 +87,7 @@ async function init() {
   updateStatusUI({
     running: !!stored.running,
     musicPlaying: !!stored.musicPlaying,
+    micGranted: !!stored.micGranted,
   });
 }
 
@@ -100,7 +102,7 @@ function setRunningUI(running) {
 // now. musicPlaying is written by offscreen.js off the real <audio>
 // element's playing/pause events, so this stays correct even if music
 // starts/stops while the popup happens to be closed.
-function updateStatusUI({ running, musicPlaying }) {
+function updateStatusUI({ running, musicPlaying, micGranted }) {
   if (!running) {
     statusEl.textContent = 'Standby';
     statusIndicatorEl.style.backgroundColor = '#dc2626';
@@ -110,7 +112,8 @@ function updateStatusUI({ running, musicPlaying }) {
     statusIndicatorEl.style.backgroundColor = '#22c55e';
     statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #22c55e';
   } else {
-    statusEl.textContent = 'Listening for silence';
+    statusEl.textContent =
+      micGranted === false ? 'Listening (mic access denied)' : 'Listening for silence';
     statusIndicatorEl.style.backgroundColor = '#ff7000';
     statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #ff7000';
   }
@@ -118,8 +121,10 @@ function updateStatusUI({ running, musicPlaying }) {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.running || changes.musicPlaying) {
-    chrome.storage.local.get(['running', 'musicPlaying']).then(updateStatusUI);
+  if (changes.running || changes.musicPlaying || changes.micGranted) {
+    chrome.storage.local
+      .get(['running', 'musicPlaying', 'micGranted'])
+      .then(updateStatusUI);
   }
 });
 
@@ -142,18 +147,43 @@ trackSelect.addEventListener('change', () => {
   pushSettingsUpdate();
 });
 
+// Requests microphone access using the click that's already in progress.
+// The offscreen document can't show this prompt itself (it's never
+// visible/focused), but once granted here, the grant applies to the whole
+// extension origin — offscreen.js's own getUserMedia call will succeed
+// silently afterward. We only need the permission grant, not the stream
+// itself, so it's stopped immediately.
+async function ensureMicPermission() {
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    stream.getTracks().forEach((t) => t.stop());
+    return true;
+  } catch (err) {
+    console.warn(
+      '[ElevatorMeet] Microphone permission not granted — silence detection will only account for other participants, not your own voice.',
+      err
+    );
+    return false;
+  }
+}
+
 toggleBtn.addEventListener('click', async () => {
   const { running } = await chrome.storage.local.get('running');
 
   if (!running) {
     statusEl.textContent = 'Starting…';
+    const micGranted = await ensureMicPermission();
     const response = await chrome.runtime.sendMessage({
       type: 'START',
       settings: currentSettings(),
     });
     if (response && response.ok) {
       setRunningUI(true);
-      await chrome.storage.local.set({ running: true, musicPlaying: false });
+      await chrome.storage.local.set({
+        running: true,
+        musicPlaying: false,
+        micGranted,
+      });
     } else {
       statusEl.textContent = response?.error || 'Could not start.';
     }

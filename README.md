@@ -7,11 +7,17 @@ or off.
 
 ## How it works
 
-ElevatorMeet listens to the audio of the active Google Meet tab and
-measures its volume about 20 times per second. If the call stays quieter
-than your chosen sensitivity for a set number of seconds, it fades in one
-of three background tracks on a loop. As soon as someone starts talking
-again, the track fades out and stops.
+ElevatorMeet listens to two audio sources: the active Google Meet tab (to
+hear other participants) and your microphone (to hear you). It measures the
+volume of both about 20 times per second. If both stay quieter than your
+chosen sensitivity for a set number of seconds, it fades in one of three
+background tracks on a loop. As soon as either you or another participant
+starts talking, the track fades out and stops.
+
+Listening to both sources matters because Google Meet does not play your
+own voice back through the tab — only other participants. Without also
+checking the microphone, the extension would have no way to tell that you
+were talking, and the music would keep playing over you.
 
 The extension only ever reads volume levels from the tab's audio — it does
 not record, store, transmit, or otherwise process anything you say. Nothing
@@ -24,7 +30,8 @@ ElevatorMeet requests and why:
 
 | Permission | Why it's needed |
 |---|---|
-| `tabCapture` | Reads the audio of the active Meet tab so ElevatorMeet can measure silence. This is the only way the extension "hears" the call. |
+| `tabCapture` | Reads the audio of the active Meet tab so ElevatorMeet can measure when other participants are talking. |
+| Microphone | Reads your own microphone's volume, so ElevatorMeet knows when you're talking too — this is requested through the standard browser permission prompt (not a Chrome extension permission), the first time you click Start. |
 | `offscreen` | Manifest V3 extensions require a hidden offscreen document to run audio analysis and playback, since the background service worker cannot use audio APIs directly. |
 | `storage` | Saves your settings (sensitivity, fade timing, chosen track, volume) locally so they persist between sessions. |
 | `activeTab` | Lets the extension act on the Meet tab you're currently viewing when you click Start. |
@@ -32,7 +39,9 @@ ElevatorMeet requests and why:
 
 ElevatorMeet does not request access to your browsing history, other
 websites, or any account data, and has no network permissions — it cannot
-send anything anywhere.
+send anything anywhere. If microphone access is denied, ElevatorMeet keeps
+working using only the tab audio — it just won't be able to tell that you
+personally are talking.
 
 ## Settings
 
@@ -48,9 +57,10 @@ send anything anywhere.
 ## Privacy
 
 ElevatorMeet does not collect, store, or transmit any personal data, call
-content, or audio recordings. All processing happens locally in your
-browser. Your settings are saved only to your own device via Chrome's
-local storage and are never sent anywhere.
+content, or audio recordings — from either the meeting or your microphone.
+All processing happens locally in your browser, in real time, and audio is
+never written to disk or sent anywhere. Your settings are saved only to
+your own device via Chrome's local storage.
 
 ## Current limitations
 
@@ -65,4 +75,4 @@ local storage and are never sent anywhere.
 ## Feedback
 
 Found a bug or have a feature request? Use the feedback link on the
-extension's Chrome Web Store listing page or visit the [GitHub repo](https://github.com/mandicOfisl/elevator-meet)
+extension's Chrome Web Store listing page.

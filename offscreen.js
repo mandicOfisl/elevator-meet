@@ -19,6 +19,16 @@ let dataArray = null;
 let monitorIntervalId = null;
 let mediaStream = null;
 
+// Local microphone — captured separately from the tab, since Google Meet
+// doesn't loop your own voice back into the tab's audio output. Without
+// this, the extension can only "hear" other participants, so the music
+// would keep playing over you if you're the only one talking.
+let micStream = null;
+let micSourceNode = null;
+let micAnalyser = null;
+let micDataArray = null;
+let micAvailable = false;
+
 let silenceStartedAt = null; // ms timestamp, or null if currently "talking"
 let musicIsPlaying = false;
 let fadeIntervalId = null;
@@ -164,6 +174,29 @@ async function startCapture(streamId) {
   sourceNode.connect(analyser);
   dataArray = new Uint8Array(analyser.frequencyBinCount);
 
+  // Also listen to the local microphone. This relies on
+  // microphone permission already having been granted for the extension's
+  // origin — popup.js requests it once via a real user gesture on Start,
+  // since this hidden offscreen document can't prompt for it itself.
+  try {
+    micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    micSourceNode = audioContext.createMediaStreamSource(micStream);
+    micAnalyser = audioContext.createAnalyser();
+    micAnalyser.fftSize = 2048;
+    micAnalyser.smoothingTimeConstant = 0.8;
+    // Analysis only — deliberately NOT connected to audioContext.destination,
+    // or you'd hear your own voice echoed back.
+    micSourceNode.connect(micAnalyser);
+    micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
+    micAvailable = true;
+  } catch (err) {
+    micAvailable = false;
+    console.warn(
+      '[ElevatorMeet] Microphone unavailable — silence detection will only account for other participants, not your own voice. Grant microphone access and click Start again to enable this.',
+      err
+    );
+  }
+
   musicEl.loop = true;
   musicEl.volume = settings.musicVolume;
   loadTrack(settings.trackId);
@@ -197,17 +230,25 @@ function monitorLoop() {
   monitorIntervalId = setInterval(monitorTick, 50); // ~20 checks/sec
 }
 
-function monitorTick() {
-  analyser.getByteTimeDomainData(dataArray);
-
-  // RMS of the waveform, roughly 0-100.
+// RMS (root-mean-square) volume of an analyser's current waveform, scaled
+// to roughly 0-100. Shared by both the tab-audio and microphone channels.
+function getRmsLevel(analyserNode, buffer) {
+  analyserNode.getByteTimeDomainData(buffer);
   let sumSquares = 0;
-  for (let i = 0; i < dataArray.length; i++) {
-    // normalize to -1.0 - +1.0
-    const norm = (dataArray[i] - 128) / 128;
+  for (let i = 0; i < buffer.length; i++) {
+    const norm = (buffer[i] - 128) / 128; // normalize to -1.0 – +1.0
     sumSquares += norm * norm;
   }
-  const level = Math.sqrt(sumSquares / dataArray.length) * 100;
+  return Math.sqrt(sumSquares / buffer.length) * 100;
+}
+
+function monitorTick() {
+  const tabLevel = getRmsLevel(analyser, dataArray);
+  const micLevel = micAvailable ? getRmsLevel(micAnalyser, micDataArray) : 0;
+
+  // "Someone is talking" if EITHER channel is loud — another participant
+  // (heard through the tab) or you (heard through the mic).
+  const level = Math.max(tabLevel, micLevel);
 
   const now = performance.now();
 
@@ -286,11 +327,17 @@ function stopCapture() {
   silenceStartedAt = null;
 
   if (sourceNode) sourceNode.disconnect();
+  if (micSourceNode) micSourceNode.disconnect();
   if (audioContext) audioContext.close();
   if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+  if (micStream) micStream.getTracks().forEach((t) => t.stop());
 
   audioContext = null;
   sourceNode = null;
   analyser = null;
   mediaStream = null;
+  micSourceNode = null;
+  micAnalyser = null;
+  micStream = null;
+  micAvailable = false;
 }
