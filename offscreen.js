@@ -270,7 +270,6 @@ function monitorTick() {
 function fadeInAndPlay() {
   musicIsPlaying = true;
   clearInterval(fadeIntervalId);
-  musicEl.currentTime = 0;
 
   const target = settings.musicVolume;
 
