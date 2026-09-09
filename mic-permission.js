@@ -14,8 +14,6 @@ const messageEl = document.getElementById('message');
       'Microphone access granted. You can close this tab and return to ElevatorMeet — click Start again to pick it up.';
     setTimeout(() => window.close(), 2500);
   } catch (err) {
-    console.warn('[ElevatorMeet] Microphone permission request failed:', err);
-
     if (err.name === 'NotAllowedError') {
       // Once denied, neither this page nor any script can re-trigger the
       // native prompt — only the person can reset it, through Chrome's own
@@ -29,6 +27,9 @@ const messageEl = document.getElementById('message');
           <li>Come back to ElevatorMeet and click Start again</li>
         </ol>
       `;
+    } else if (err.name === 'NotFoundError') {
+      messageEl.textContent =
+        "Microphone access wasn't granted because no microphone input was found. ElevatorMeet will still work using only the meeting audio — you can close this tab.";
     } else {
       messageEl.textContent =
         "Microphone access wasn't granted. ElevatorMeet will still work using only the meeting audio — you can close this tab.";
