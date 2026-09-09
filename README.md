@@ -19,9 +19,14 @@ own voice back through the tab — only other participants. Without also
 checking the microphone, the extension would have no way to tell that you
 were talking, and the music would keep playing over you.
 
-The extension only ever reads volume levels from the tab's audio — it does
-not record, store, transmit, or otherwise process anything you say. Nothing
-about a call is saved anywhere, on your device or elsewhere.
+The first time you click Start, Chrome may briefly open a new tab to ask
+for microphone permission — this happens because Chrome does not allow
+that permission prompt to appear from inside the extension's toolbar
+popup. Allow it there, close the tab, and click Start again; the
+permission is remembered from then on, and the microphone gets used
+automatically. If you skip or deny it, ElevatorMeet keeps working — it
+just won't be able to tell you personally are talking, and treats you the
+same as a silent participant.
 
 ## Permissions
 

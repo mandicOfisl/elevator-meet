@@ -87,7 +87,7 @@ async function init() {
   updateStatusUI({
     running: !!stored.running,
     musicPlaying: !!stored.musicPlaying,
-    micGranted: !!stored.micGranted,
+    micGranted: stored.micGranted,
   });
 }
 
@@ -97,11 +97,11 @@ function setRunningUI(running) {
   toggleBtn.ariaPressed = running ? 'true' : 'false';
 }
 
-// Drives the footer text + indicator dot from the two bits of state that
-// matter: is capture running at all, and is music actually audible right
-// now. musicPlaying is written by offscreen.js off the real <audio>
-// element's playing/pause events, so this stays correct even if music
-// starts/stops while the popup happens to be closed.
+// Drives the footer text + indicator dot from the state that matters: is
+// capture running at all, is music actually audible right now, and was mic
+// access granted. musicPlaying is written by offscreen.js off the real
+// <audio> element's playing/pause events, so this stays correct even if
+// music starts/stops while the popup happens to be closed.
 function updateStatusUI({ running, musicPlaying, micGranted }) {
   if (!running) {
     statusEl.textContent = 'Standby';
@@ -113,7 +113,9 @@ function updateStatusUI({ running, musicPlaying, micGranted }) {
     statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #22c55e';
   } else {
     statusEl.textContent =
-      micGranted === false ? 'Listening (mic access denied)' : 'Listening for silence';
+      micGranted === false
+        ? 'Listening (mic access denied)'
+        : 'Listening for silence';
     statusIndicatorEl.style.backgroundColor = '#ff7000';
     statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #ff7000';
   }
@@ -147,23 +149,42 @@ trackSelect.addEventListener('change', () => {
   pushSettingsUpdate();
 });
 
-// Requests microphone access using the click that's already in progress.
-// The offscreen document can't show this prompt itself (it's never
-// visible/focused), but once granted here, the grant applies to the whole
-// extension origin — offscreen.js's own getUserMedia call will succeed
-// silently afterward. We only need the permission grant, not the stream
-// itself, so it's stopped immediately.
+// Chrome will not display the microphone permission prompt from inside an
+// extension's action popup — it needs a real, focusable top-level tab to
+// attach to. So: check the current permission state first (no prompt
+// involved), and only open a dedicated tab to request it when it hasn't
+// been decided yet. Once granted there, the permission applies to the
+// whole extension origin, so offscreen.js's own getUserMedia call succeeds
+// silently on every future Start — this only has to happen once.
 async function ensureMicPermission() {
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    stream.getTracks().forEach((t) => t.stop());
-    return true;
+    const status = await navigator.permissions.query({ name: 'microphone' });
+
+    if (status.state === 'granted') return true;
+    if (status.state === 'denied') return false; // already decided — don't re-prompt
+
+    // status.state === 'prompt' — never been asked. Open a real tab so
+    // Chrome can actually show the permission UI, then proceed with Start
+    // using tab-audio-only for now; the mic will be picked up automatically
+    // the next time Start is clicked, once permission has been granted.
+    chrome.tabs.create({ url: chrome.runtime.getURL('mic-permission.html') });
+    return false;
   } catch (err) {
+    // navigator.permissions.query({name:'microphone'}) isn't guaranteed to
+    // be supported everywhere — fall back to the direct approach.
     console.warn(
-      '[ElevatorMeet] Microphone permission not granted — silence detection will only account for other participants, not your own voice.',
+      '[ElevatorMeet] Permission query unsupported, falling back:',
       err
     );
-    return false;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      stream.getTracks().forEach((t) => t.stop());
+      return true;
+    } catch {
+      return false;
+    }
   }
 }
 

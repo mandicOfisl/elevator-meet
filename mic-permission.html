@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ElevatorMeet — Microphone Access</title>
+    <style>
+      body {
+        background: #1c1b1b;
+        color: #e5e2e1;
+        font-family:
+          'Inter',
+          -apple-system,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        margin: 0;
+        text-align: center;
+      }
+      #message {
+        max-width: 420px;
+        padding: 0 24px;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      #message code {
+        background: #3b3b3b;
+        padding: 1px 5px;
+        border-radius: 3px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="message">Requesting microphone access for ElevatorMeet…</div>
+    <script src="mic-permission.js"></script>
+  </body>
+</html>

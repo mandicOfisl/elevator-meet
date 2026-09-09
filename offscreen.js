@@ -174,7 +174,8 @@ async function startCapture(streamId) {
   sourceNode.connect(analyser);
   dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-  // Also listen to the local microphone. This relies on
+  // Also listen to the local microphone, so the extension notices when
+  // *you're* the one talking, not just other participants. This relies on
   // microphone permission already having been granted for the extension's
   // origin — popup.js requests it once via a real user gesture on Start,
   // since this hidden offscreen document can't prompt for it itself.
