@@ -71,6 +71,7 @@ async function init() {
     'trackId',
     'running',
     'musicPlaying',
+    'micGranted',
   ]);
 
   if (stored.silenceThreshold) silenceRange.value = stored.silenceThreshold;
@@ -86,6 +87,7 @@ async function init() {
   updateStatusUI({
     running: !!stored.running,
     musicPlaying: !!stored.musicPlaying,
+    micGranted: stored.micGranted,
   });
 }
 
@@ -95,12 +97,12 @@ function setRunningUI(running) {
   toggleBtn.ariaPressed = running ? 'true' : 'false';
 }
 
-// Drives the footer text + indicator dot from the two bits of state that
-// matter: is capture running at all, and is music actually audible right
-// now. musicPlaying is written by offscreen.js off the real <audio>
-// element's playing/pause events, so this stays correct even if music
-// starts/stops while the popup happens to be closed.
-function updateStatusUI({ running, musicPlaying }) {
+// Drives the footer text + indicator dot from the state that matters: is
+// capture running at all, is music actually audible right now, and was mic
+// access granted. musicPlaying is written by offscreen.js off the real
+// <audio> element's playing/pause events, so this stays correct even if
+// music starts/stops while the popup happens to be closed.
+function updateStatusUI({ running, musicPlaying, micGranted }) {
   if (!running) {
     statusEl.textContent = 'Standby';
     statusIndicatorEl.style.backgroundColor = '#dc2626';
@@ -110,7 +112,10 @@ function updateStatusUI({ running, musicPlaying }) {
     statusIndicatorEl.style.backgroundColor = '#22c55e';
     statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #22c55e';
   } else {
-    statusEl.textContent = 'Listening for silence';
+    statusEl.textContent =
+      micGranted === false
+        ? 'Listening (mic access denied)'
+        : 'Listening for silence';
     statusIndicatorEl.style.backgroundColor = '#ff7000';
     statusIndicatorEl.style.boxShadow = '0px 0px 3px 2px #ff7000';
   }
@@ -118,8 +123,10 @@ function updateStatusUI({ running, musicPlaying }) {
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-  if (changes.running || changes.musicPlaying) {
-    chrome.storage.local.get(['running', 'musicPlaying']).then(updateStatusUI);
+  if (changes.running || changes.musicPlaying || changes.micGranted) {
+    chrome.storage.local
+      .get(['running', 'musicPlaying', 'micGranted'])
+      .then(updateStatusUI);
   }
 });
 
@@ -142,18 +149,62 @@ trackSelect.addEventListener('change', () => {
   pushSettingsUpdate();
 });
 
+// Chrome will not display the microphone permission prompt from inside an
+// extension's action popup — it needs a real, focusable top-level tab to
+// attach to. So: check the current permission state first (no prompt
+// involved), and only open a dedicated tab to request it when it hasn't
+// been decided yet. Once granted there, the permission applies to the
+// whole extension origin, so offscreen.js's own getUserMedia call succeeds
+// silently on every future Start — this only has to happen once.
+async function ensureMicPermission() {
+  try {
+    const status = await navigator.permissions.query({ name: 'microphone' });
+
+    if (status.state === 'granted') return true;
+    if (status.state === 'denied') return false; // already decided — don't re-prompt
+
+    // status.state === 'prompt' — never been asked. Open a real tab so
+    // Chrome can actually show the permission UI, then proceed with Start
+    // using tab-audio-only for now; the mic will be picked up automatically
+    // the next time Start is clicked, once permission has been granted.
+    chrome.tabs.create({ url: chrome.runtime.getURL('mic-permission.html') });
+    return false;
+  } catch (err) {
+    // navigator.permissions.query({name:'microphone'}) isn't guaranteed to
+    // be supported everywhere — fall back to the direct approach.
+    console.warn(
+      '[ElevatorMeet] Permission query unsupported, falling back:',
+      err
+    );
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: true,
+      });
+      stream.getTracks().forEach((t) => t.stop());
+      return true;
+    } catch {
+      return false;
+    }
+  }
+}
+
 toggleBtn.addEventListener('click', async () => {
   const { running } = await chrome.storage.local.get('running');
 
   if (!running) {
     statusEl.textContent = 'Starting…';
+    const micGranted = await ensureMicPermission();
     const response = await chrome.runtime.sendMessage({
       type: 'START',
       settings: currentSettings(),
     });
     if (response && response.ok) {
       setRunningUI(true);
-      await chrome.storage.local.set({ running: true, musicPlaying: false });
+      await chrome.storage.local.set({
+        running: true,
+        musicPlaying: false,
+        micGranted,
+      });
     } else {
       statusEl.textContent = response?.error || 'Could not start.';
     }
